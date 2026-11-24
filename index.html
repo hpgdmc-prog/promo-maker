@@ -134,6 +134,9 @@ details.brandset .inner{display:flex;flex-direction:column;gap:8px;margin-top:10
 body{padding-bottom:env(safe-area-inset-bottom)}
 .hdr-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .install{background:#F2B035;color:#17181C;border:0;border-radius:999px;padding:7px 14px;font-weight:800;cursor:pointer}
+.updateBar{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top));z-index:10;background:var(--ink);color:#fff;border-radius:999px;padding:8px 8px 8px 18px;display:flex;gap:12px;align-items:center;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.updateBar button{border:0;background:#FFD15C;color:#17181C;font-weight:800;border-radius:999px;padding:8px 14px;cursor:pointer}
+.ver{font-size:11px;color:var(--muted);text-align:center}
 .iosHint{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:14px;z-index:8;display:flex;gap:12px;align-items:flex-start}
 .iosHint b{color:var(--brand)}
 .iosHint button{margin-left:auto;border:0;background:#EFEDE8;border-radius:8px;padding:6px 10px;cursor:pointer;flex:none}
@@ -237,6 +240,7 @@ body{padding-bottom:env(safe-area-inset-bottom)}
         <button type="button" class="btn" id="brandReset">이 분야 기본값으로 되돌리기</button>
       </div>
     </details>
+    <div class="ver" id="verLabel"></div>
   </section>
 
   <section class="panel out" aria-label="플랫폼별 결과">
@@ -363,11 +367,16 @@ body{padding-bottom:env(safe-area-inset-bottom)}
     </div>
   </section>
 </main>
+<div class="updateBar" id="updateBar" hidden role="status">
+  <span>새 버전이 나왔어요.</span>
+  <button type="button" id="updateBtn">지금 업데이트</button>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
 'use strict';
+const APP_VERSION = '2026.11.24-3';
 const SANS = '"Noto Sans KR","Apple SD Gothic Neo",sans-serif';
 const SERIF = '"Noto Serif KR","AppleMyungjo",serif';
 const HEAD = '"Black Han Sans","Noto Sans KR",sans-serif';
@@ -1705,9 +1714,38 @@ function init(){
 /* ---------- 앱 설치·오프라인 ---------- */
 function setupApp(){
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {}
+  $('verLabel').textContent = `버전 ${APP_VERSION}`;
+  const online = location.protocol === 'https:' || location.hostname === 'localhost';
+  let reg = null, wantReload = false;
+  const showUpdate = () => { $('updateBar').hidden = false; };
+  const doUpdate = () => {
+    wantReload = true;
+    try { if (reg && reg.waiting) reg.waiting.postMessage('skipWaiting'); } catch (e) {}
+    setTimeout(() => location.reload(), 600);
+  };
+  $('updateBtn').addEventListener('click', doUpdate);
+  // 새 버전 확인: 서버의 version.json과 이 화면의 버전을 비교
+  const checkVersion = async () => {
+    if (!online || reel.running) return;
+    try {
+      const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return; const j = await r.json();
+      if (j.version && j.version !== APP_VERSION) showUpdate();
+    } catch (e) {}
+    try { if (reg) reg.update(); } catch (e) {}
+  };
+  if ('serviceWorker' in navigator && online) {
+    try {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => {
+        reg = r;
+        r.addEventListener('updatefound', () => { const nw = r.installing; if (nw) nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdate(); }); });
+      }).catch(() => {});
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (wantReload) location.reload(); });
+    } catch (e) {}
   }
+  setTimeout(checkVersion, 1500);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
+  setInterval(checkVersion, 20 * 60 * 1000);
   let deferred = null;
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; $('installBtn').hidden = false; });
   $('installBtn').addEventListener('click', async () => { if (!deferred) return; deferred.prompt(); try { await deferred.userChoice; } catch (e) {} deferred = null; $('installBtn').hidden = true; });
