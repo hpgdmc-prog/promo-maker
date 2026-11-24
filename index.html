@@ -61,6 +61,11 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 .themes strong{font-size:13px;padding:0 2px}
 .themes span{font-size:11px;color:var(--muted);padding:0 2px;line-height:1.3}
 .themes button[aria-pressed="true"]{border-color:var(--brand);box-shadow:inset 0 0 0 2px var(--brand);background:#fff}
+.pals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pals button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:flex-start;font-size:12px;font-weight:600}
+.pals button[aria-pressed="true"]{border-color:var(--brand);box-shadow:inset 0 0 0 2px var(--brand)}
+.pals .sw{display:flex;gap:3px}
+.pals .sw i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.08);display:block}
 .tip{font-size:12px;color:var(--muted);background:#F7F6F2;border-radius:8px;padding:8px 10px}
 .tip code{background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-family:inherit;color:var(--ink);font-weight:700}
 .drop{border:1.5px dashed #C9C6BF;border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:#FAFAF8;color:var(--muted);font-size:13px}
@@ -80,7 +85,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-vis
 details.brandset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#FAFAF8}
 details.brandset summary{cursor:pointer;font-weight:700;font-size:13px}
 details.brandset .inner{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.colors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .colors label{font-size:12px;display:flex;flex-direction:column;gap:3px}
 .colors input{width:100%;height:34px;border:1px solid var(--line);border-radius:8px;padding:2px;background:#fff}
 .btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;cursor:pointer;font-weight:500;font-size:13px}
@@ -157,6 +162,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
     <div class="step">
       <h2><b>1</b>디자인 테마 고르기</h2>
       <div class="themes" id="themeBtns" role="group" aria-label="디자인 테마"></div>
+      <div style="font-size:13px;font-weight:700;margin-top:4px">색감</div>
+      <div class="pals" id="palBtns" role="group" aria-label="색감"></div>
       <div class="row2">
         <button type="button" class="btn" id="variantBtn">배치 바꾸기 (A/B)</button>
         <label class="f" style="font-weight:400"><select id="f_type" aria-label="콘텐츠 종류"></select></label>
@@ -218,7 +225,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
         <label class="f">기본 해시태그 <input type="text" id="b_tags"></label>
         <div class="colors">
           <label>대표색<input type="color" id="b_primary"></label>
-          <label>포인트색<input type="color" id="b_accent"></label>
+          <label>보조색<input type="color" id="b_accent"></label>
+          <label>강조 형광<input type="color" id="b_pop"></label>
           <label>바탕색<input type="color" id="b_light"></label>
         </div>
         <div class="row2">
@@ -367,26 +375,44 @@ const PEN = '"Nanum Pen Script","Noto Sans KR",cursive';
 const $ = (id) => document.getElementById(id);
 
 /* ---------- 분야별 기본값 ---------- */
+const PALETTES = {
+  mc: [
+    { name:'코발트 & 선샤인', primary:'#2D5BE3', accent:'#0E9F8B', pop:'#FFD34D', light:'#FAFBFE', soft:'#E8EFFF', ink:'#141B2D' },
+    { name:'스카이 & 코랄', primary:'#1F7AE0', accent:'#E0533B', pop:'#FFD7CA', light:'#F9FBFC', soft:'#E2F1FA', ink:'#122033' },
+    { name:'네이비 클래식', primary:'#22335C', accent:'#B87A12', pop:'#F6CF6B', light:'#F8F7F3', soft:'#E9EDF5', ink:'#161B26' }
+  ],
+  pizza: [
+    { name:'토마토 & 바질', primary:'#E0442F', accent:'#3E8E57', pop:'#FFD15C', light:'#FFFCF7', soft:'#FFEDE6', ink:'#2B1D18' },
+    { name:'버터 & 퍼시몬', primary:'#EA5B2B', accent:'#2F7D6D', pop:'#FFD66B', light:'#FFFCF5', soft:'#FFF0D6', ink:'#2F241D' },
+    { name:'버건디 라이트', primary:'#A32638', accent:'#A9761E', pop:'#F3D28A', light:'#FDFAF6', soft:'#F8E7E3', ink:'#2A1A1C' }
+  ],
+  fashion: [
+    { name:'클라우드 & 모카', primary:'#8C6A55', accent:'#5F7D5E', pop:'#EAD5BF', light:'#FBFAF7', soft:'#F1EAE2', ink:'#2B2622' },
+    { name:'블러시 핑크', primary:'#CC5E68', accent:'#7E6496', pop:'#FAD3CF', light:'#FFFAF9', soft:'#FCE9E7', ink:'#2E2224' },
+    { name:'세이지 & 제이드', primary:'#2F7A63', accent:'#B87843', pop:'#F1DFA8', light:'#F8FAF7', soft:'#E6F0EA', ink:'#1F2A25' }
+  ]
+};
+const PAL_KEYS = ['primary','accent','pop','light','soft','ink'];
 const DEFAULT_BRANDS = {
   mc: {
     label:'MC 전종화', name:'MC 전종화', sub:'30년차 현장형 행사 MC',
     tagline:'어떤 관객이든 하나로 만드는 진행', contact:'010-9171-1385', handle:'',
     tags:'#행사MC #축제MC #레크리에이션 #결혼식사회자 #경북행사',
-    primary:'#16233F', accent:'#F2B035', light:'#F5F3EE', logo:'',
+    pal:0, logo:'',
     types:['행사 후기','진행 노하우','웨딩','섭외 안내'], range:[20,40], collage:'현장 스케치'
   },
   pizza: {
     label:'지구인피자', name:'지구인피자', sub:'G9iN PIZZA',
     tagline:'Good taste. Good life.', contact:'', handle:'',
     tags:'#석적피자 #칠곡맛집 #구미피자 #피자밀키트 #지구인피자',
-    primary:'#7A1F2B', accent:'#C9A24B', light:'#F7F0E1', logo:'',
+    pal:0, logo:'',
     types:['시그니처 메뉴','신메뉴','밀키트','이벤트·할인','사장님 이야기'], range:[15,30], collage:'한 판이 완성되기까지'
   },
   fashion: {
     label:'패션삼성동', name:'패션삼성동', sub:'구미 옥계동 셀렉트숍',
     tagline:'오늘, 가장 나다운 옷', contact:'', handle:'',
     tags:'#구미옷가게 #옥계동 #여성의류 #셀렉트숍 #패션삼성동',
-    primary:'#1F1E1C', accent:'#C8A98A', light:'#FAF7F2', logo:'',
+    pal:0, logo:'',
     types:['신상 입고','코디 제안','세일·이벤트','매장 소식'], range:[15,30], collage:'이번 주 룩북'
   }
 };
@@ -434,7 +460,10 @@ const state = {
 };
 const storedBrands = store.get('promo.brands', {});
 for (const k of Object.keys(DEFAULT_BRANDS)) {
-  state.brands[k] = Object.assign({}, DEFAULT_BRANDS[k], storedBrands[k] || {}, { types: DEFAULT_BRANDS[k].types, range: DEFAULT_BRANDS[k].range, label: DEFAULT_BRANDS[k].label, collage: DEFAULT_BRANDS[k].collage });
+  PAL_KEYS.forEach(c => DEFAULT_BRANDS[k][c] = PALETTES[k][0][c]);
+  const sb = Object.assign({}, storedBrands[k] || {});
+  if (sb.pal === undefined) PAL_KEYS.forEach(c => delete sb[c]); /* 예전 어두운 색 저장값은 버림 */
+  state.brands[k] = Object.assign({}, DEFAULT_BRANDS[k], sb, { types: DEFAULT_BRANDS[k].types, range: DEFAULT_BRANDS[k].range, label: DEFAULT_BRANDS[k].label, collage: DEFAULT_BRANDS[k].collage });
   state.forms[k] = Object.assign({}, EXAMPLES[k], storedForms[k] || {});
   if (!THEMES.some(t => t[0] === state.styles[k])) state.styles[k] = 'bold';
 }
@@ -600,34 +629,35 @@ function vGrad(ctx, x, y, w, h, from, to){ const g = ctx.createLinearGradient(0,
 
 /* ---------- 테마 ---------- */
 function theme(k = STYLE()){
-  const b = B(), ink = '#16171B';
-  const T = { k, b, ink, primary: b.primary, accent: b.accent, light: b.light, v: VAR() };
-  if (k === 'bold') Object.assign(T, { disp: HEAD, dw: 400, bg: b.primary, fg: onColor(b.primary), hl: { mode: 'color', color: b.accent }, lh: 1.12 });
-  else if (k === 'pop') Object.assign(T, { disp: HEAD, dw: 400, bg: b.light, fg: ink, hl: { mode: 'box', color: b.accent, fg: onColor(b.accent) }, lh: 1.2 });
+  const b = B(), ink = b.ink || '#2A211D';
+  const T = { k, b, ink, primary: b.primary, accent: b.accent, pop: b.pop || b.accent, light: b.light, soft: b.soft || b.light, v: VAR() };
+  const box = { mode: 'box', color: T.pop, fg: onColor(T.pop) };
+  if (k === 'bold') Object.assign(T, { disp: HEAD, dw: 400, bg: T.soft, fg: ink, hl: { mode: 'color', color: b.primary }, lh: 1.14 });
+  else if (k === 'pop') Object.assign(T, { disp: HEAD, dw: 400, bg: b.light, fg: ink, hl: box, lh: 1.22 });
   else if (k === 'magazine') Object.assign(T, { disp: SERIF, dw: 700, bg: b.light, fg: ink, hl: { mode: 'color', color: b.primary }, lh: 1.28 });
-  else if (k === 'news') Object.assign(T, { disp: SANS, dw: 900, bg: '#111214', fg: '#FFFFFF', hl: { mode: 'box', color: '#FFD43B', fg: '#111214' }, lh: 1.24 });
-  else if (k === 'film') Object.assign(T, { disp: SERIF, dw: 700, bg: '#F3EEE4', fg: '#2A2622', hl: { mode: 'marker', color: rgba(b.accent, .5) }, lh: 1.3 });
-  else Object.assign(T, { disp: SANS, dw: 800, bg: '#FFFFFF', fg: ink, hl: { mode: 'underline', color: b.accent }, lh: 1.26 });
-  T.sub = T.fg === '#FFFFFF' ? 'rgba(255,255,255,.78)' : '#5C5D63';
+  else if (k === 'news') Object.assign(T, { disp: SANS, dw: 900, bg: '#FFFFFF', fg: ink, hl: box, lh: 1.24 });
+  else if (k === 'film') Object.assign(T, { disp: SERIF, dw: 700, bg: b.light, fg: ink, hl: { mode: 'marker', color: rgba(T.pop, .75) }, lh: 1.3 });
+  else Object.assign(T, { disp: SANS, dw: 800, bg: '#FFFFFF', fg: ink, hl: { mode: 'marker', color: rgba(T.pop, .7) }, lh: 1.26 });
+  T.sub = rgba(ink, .6);
   return T;
 }
 function paintBg(ctx, W, H, T, color){
   ctx.fillStyle = color || T.bg; ctx.fillRect(0, 0, W, H);
   const u = W / 1080;
-  if (T.k === 'film') { const r = rng(7); for (let i = 0; i < W * H / 1000; i++) { ctx.fillStyle = r() < .5 ? 'rgba(80,60,30,.05)' : 'rgba(255,255,255,.06)'; ctx.fillRect(r() * W, r() * H, 2 * u, 2 * u); } }
-  if (T.k === 'pop') { ctx.fillStyle = rgba(T.ink, .07); for (let y = 18 * u; y < H; y += 36 * u) for (let x = 18 * u; x < W; x += 36 * u) { ctx.beginPath(); ctx.arc(x, y, 2.4 * u, 0, 7); ctx.fill(); } }
+  if (T.k === 'film') { const r = rng(7); for (let i = 0; i < W * H / 1000; i++) { ctx.fillStyle = r() < .5 ? 'rgba(120,90,50,.035)' : 'rgba(255,255,255,.08)'; ctx.fillRect(r() * W, r() * H, 2 * u, 2 * u); } }
+  if (T.k === 'pop') { ctx.fillStyle = rgba(T.primary, .1); for (let y = 18 * u; y < H; y += 36 * u) for (let x = 18 * u; x < W; x += 36 * u) { ctx.beginPath(); ctx.arc(x, y, 2.4 * u, 0, 7); ctx.fill(); } }
 }
 function photoFrame(ctx, still, x, y, w, h, T, o = {}){
   const u = o.u || 1;
   if (T.k === 'pop') {
-    ctx.fillStyle = T.ink; rrect(ctx, x + 14 * u, y + 14 * u, w, h, 30 * u); ctx.fill();
-    ctx.save(); rrect(ctx, x, y, w, h, 30 * u); ctx.clip(); ctx.fillStyle = '#ddd'; ctx.fillRect(x, y, w, h); cover(ctx, still, x, y, w, h); ctx.restore();
-    ctx.lineWidth = 6 * u; ctx.strokeStyle = T.ink; rrect(ctx, x, y, w, h, 30 * u); ctx.stroke(); return;
+    ctx.fillStyle = T.primary; rrect(ctx, x + 14 * u, y + 14 * u, w, h, 30 * u); ctx.fill();
+    ctx.save(); rrect(ctx, x, y, w, h, 30 * u); ctx.clip(); ctx.fillStyle = '#eee'; ctx.fillRect(x, y, w, h); cover(ctx, still, x, y, w, h); ctx.restore();
+    ctx.lineWidth = 4 * u; ctx.strokeStyle = T.ink; rrect(ctx, x, y, w, h, 30 * u); ctx.stroke(); return;
   }
   if (T.k === 'film') {
     const rot = (o.rot ?? -2) * Math.PI / 180, m = 24 * u, bm = o.bottom ?? 104 * u;
     ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot);
-    ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 26 * u; ctx.shadowOffsetY = 10 * u;
+    ctx.shadowColor = 'rgba(60,40,20,.16)'; ctx.shadowBlur = 30 * u; ctx.shadowOffsetY = 10 * u;
     ctx.fillStyle = '#FFFEFA'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.shadowColor = 'transparent';
     cover(ctx, still, -w / 2 + m, -h / 2 + m, w - 2 * m, h - m - bm);
     if (o.stamp) { ctx.fillStyle = '#FF7A1A'; ctx.font = `700 ${30 * u}px "Courier New",monospace`; ctx.textAlign = 'right'; ctx.fillText(o.stamp, w / 2 - m - 16 * u, h / 2 - bm - 18 * u); }
@@ -635,18 +665,18 @@ function photoFrame(ctx, still, x, y, w, h, T, o = {}){
     ctx.fillStyle = 'rgba(232,220,190,.8)'; ctx.save(); ctx.translate(0, -h / 2); ctx.rotate(4 * Math.PI / 180); ctx.fillRect(-85 * u, -22 * u, 170 * u, 44 * u); ctx.restore();
     ctx.restore(); return;
   }
-  if (T.k === 'news') { cover(ctx, still, x, y, w, h); ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 2 * u; ctx.strokeRect(x, y, w, h); return; }
+  if (T.k === 'news') { cover(ctx, still, x, y, w, h); ctx.strokeStyle = rgba(T.ink, .08); ctx.lineWidth = 2 * u; ctx.strokeRect(x, y, w, h); return; }
   if (o.radius) { ctx.save(); rrect(ctx, x, y, w, h, o.radius); ctx.clip(); cover(ctx, still, x, y, w, h); ctx.restore(); return; }
   cover(ctx, still, x, y, w, h);
 }
 function sticker(ctx, cx, cy, r, text, T, deg = -12){
   const u = r / 92;
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(deg * Math.PI / 180);
-  ctx.fillStyle = T.ink; ctx.beginPath(); ctx.arc(6 * u, 6 * u, r, 0, 7); ctx.fill();
-  ctx.fillStyle = T.accent; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
-  ctx.lineWidth = 5 * u; ctx.strokeStyle = T.ink; ctx.stroke();
+  ctx.fillStyle = T.primary; ctx.beginPath(); ctx.arc(6 * u, 6 * u, r, 0, 7); ctx.fill();
+  ctx.fillStyle = T.pop; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+  ctx.lineWidth = 4 * u; ctx.strokeStyle = T.ink; ctx.stroke();
   const ls = String(text).split('\n'); const fs = (ls.length > 1 ? 40 : 50) * u;
-  ctx.fillStyle = onColor(T.accent); ctx.font = `400 ${fs}px ${HEAD}`; ctx.textAlign = 'center';
+  ctx.fillStyle = T.ink; ctx.font = `400 ${fs}px ${HEAD}`; ctx.textAlign = 'center';
   ls.forEach((l, i) => ctx.fillText(l, 0, (i - (ls.length - 1) / 2) * fs * 1.05 + fs * 0.36));
   ctx.restore();
 }
@@ -669,6 +699,10 @@ function brandMark(ctx, x, y, h, color, align = 'left', font){
   ctx.font = font || `900 ${Math.round(h * 0.6)}px ${SANS}`; ctx.fillText(b.name, x, y + h / 2);
   ctx.restore();
 }
+function card(ctx, x, y, w, h, T, u){
+  ctx.save(); ctx.shadowColor = 'rgba(30,20,10,.18)'; ctx.shadowBlur = 40 * u; ctx.shadowOffsetY = 12 * u;
+  ctx.fillStyle = rgba(T.light, .97); rrect(ctx, x, y, w, h, 34 * u); ctx.fill(); ctx.restore();
+}
 const eyebrowText = () => EYEBROW[F().type] || 'NEWS';
 const stickerText = () => STICKER[F().type] || 'NEW!';
 function points(){ return [F().p[0], F().p[1], F().p[2]].map(s => (s || '').trim()).filter(Boolean); }
@@ -682,9 +716,10 @@ function footer(ctx, W, H, T, page, u){
 /* ---------- 예시 사진 ---------- */
 function placeholder(i){
   const b = B(); const c = document.createElement('canvas'); c.width = 1200; c.height = 1500; const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 1200, 1500); g.addColorStop(0, ['#3B4A6B', '#8C5A3C', '#5E6B54'][i % 3]); g.addColorStop(1, ['#C9A878', '#E3C08A', '#B9C2A8'][i % 3]); x.fillStyle = g; x.fillRect(0, 0, 1200, 1500);
-  const r = rng(i + 3); for (let k = 0; k < 14; k++) { x.fillStyle = `rgba(255,255,255,${0.04 + r() * 0.08})`; x.beginPath(); x.arc(r() * 1200, r() * 1500, 60 + r() * 260, 0, 7); x.fill(); }
-  x.fillStyle = 'rgba(255,255,255,.85)'; x.textAlign = 'center';
+  const g = x.createLinearGradient(0, 0, 1200, 1500); g.addColorStop(0, b.light); g.addColorStop(1, b.soft); x.fillStyle = g; x.fillRect(0, 0, 1200, 1500);
+  const cols = [b.primary, b.accent, b.pop];
+  const r = rng(i + 3); for (let k = 0; k < 9; k++) { x.fillStyle = rgba(cols[(k + i) % 3], 0.1 + r() * 0.16); x.beginPath(); x.arc(r() * 1200, r() * 1500, 90 + r() * 260, 0, 7); x.fill(); }
+  x.fillStyle = rgba(b.ink, .55); x.textAlign = 'center';
   x.font = `700 58px ${SANS}`; x.fillText(`예시 사진 ${i + 1}`, 600, 760);
   x.font = `500 34px ${SANS}`; x.fillText('내 사진·영상을 올리면 바뀝니다', 600, 820);
   return c;
@@ -693,7 +728,7 @@ let phCache = { key: '', list: [] };
 function stills(){
   const s = state.media.map(m => m.still).filter(Boolean);
   if (s.length) return s;
-  if (phCache.key !== state.brandKey) phCache = { key: state.brandKey, list: [0, 1, 2, 3].map(placeholder) };
+  const pk = state.brandKey + B().primary + B().soft; if (phCache.key !== pk) phCache = { key: pk, list: [0, 1, 2, 3].map(placeholder) };
   return phCache.list;
 }
 function captionFor(i){
@@ -710,26 +745,28 @@ function drawCover(ctx, W, H, still, opt, T){
   const tall = H / W > 1.5; const safeB = opt.safeBottom || 110 * u;
   if (T.k === 'bold') {
     paintBg(ctx, W, H, T); photoFrame(ctx, still, 0, 0, W, H, T, { u });
-    if (v === 0) { vGrad(ctx, 0, 0, W, H * .2, 'rgba(0,0,0,.45)', 'rgba(0,0,0,0)'); vGrad(ctx, 0, H * .34, W, H * .66, 'rgba(0,0,0,0)', 'rgba(0,0,0,.86)'); }
-    else { vGrad(ctx, 0, 0, W, H * .62, 'rgba(0,0,0,.82)', 'rgba(0,0,0,0)'); vGrad(ctx, 0, H * .8, W, H * .2, 'rgba(0,0,0,0)', 'rgba(0,0,0,.5)'); }
+    vGrad(ctx, 0, 0, W, H * .18, 'rgba(0,0,0,.3)', 'rgba(0,0,0,0)');
     brandMark(ctx, pad, 60 * u, 58 * u, '#fff');
-    if (opt.page) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = `600 ${26 * u}px ${SANS}`; ctx.textAlign = 'right'; ctx.fillText(opt.page, W - pad, 98 * u); }
-    const tb = block(ctx, f.title, W - pad * 2, { family: HEAD, weight: 400, size: 124 * u, min: 74 * u, maxLines: 3, lh: 1.1 });
-    ctx.font = `500 ${36 * u}px ${SANS}`; const sub = wrap(ctx, plain(f.sub), W - pad * 2).slice(0, 2);
-    const eh = 26 * u * 1.8, total = eh + 26 * u + tb.h + (sub.length ? 26 * u + sub.length * 50 * u : 0);
-    let y = v === 0 ? H - safeB - total : (tall ? 260 * u : 170 * u);
-    pill(ctx, eyebrowText(), pad, y, T.accent, onColor(T.accent), 26 * u);
-    if (opt.swipe) pill(ctx, '넘겨보세요  →', W - pad, v === 0 ? y : H - safeB - 26 * u * 1.8, 'rgba(255,255,255,.92)', '#16171B', 26 * u, 'right');
-    y += eh + 26 * u;
-    y = drawBlock(ctx, tb, pad, y, { fg: '#FFFFFF', hl: T.hl });
-    ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.font = `500 ${36 * u}px ${SANS}`; ctx.textAlign = 'left';
-    sub.forEach((l, i) => ctx.fillText(l, pad, y + 26 * u + 36 * u + i * 50 * u));
+    if (opt.page) { ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = `600 ${26 * u}px ${SANS}`; ctx.textAlign = 'right'; ctx.fillText(opt.page, W - pad, 98 * u); }
+    const cw = W - pad * 2, ip = 48 * u;
+    const tb = block(ctx, f.title, cw - ip * 2, { family: HEAD, weight: 400, size: 108 * u, min: 66 * u, maxLines: 3, lh: 1.14 });
+    ctx.font = `500 ${34 * u}px ${SANS}`; const sub = wrap(ctx, plain(f.sub), cw - ip * 2).slice(0, 2);
+    const eh = 24 * u * 1.8, ch = ip + eh + 24 * u + tb.h + (sub.length ? 26 * u + sub.length * 48 * u : 0) + ip;
+    const cy = v === 0 ? H - safeB - ch + 30 * u : (tall ? 240 * u : 150 * u);
+    card(ctx, pad, cy, cw, ch, T, u);
+    let y = cy + ip;
+    pill(ctx, eyebrowText(), pad + ip, y, T.primary, onColor(T.primary), 24 * u);
+    if (opt.swipe) pill(ctx, '넘겨보세요  →', pad + cw - ip, y, T.pop, onColor(T.pop), 24 * u, 'right');
+    y += eh + 24 * u;
+    y = drawBlock(ctx, tb, pad + ip, y, { fg: T.ink, hl: T.hl });
+    ctx.fillStyle = T.sub; ctx.font = `500 ${34 * u}px ${SANS}`; ctx.textAlign = 'left';
+    sub.forEach((l, i) => ctx.fillText(l, pad + ip, y + 26 * u + 34 * u + i * 48 * u));
     return;
   }
   if (T.k === 'pop') {
     paintBg(ctx, W, H, T);
     let y = (tall ? 230 : 84) * u;
-    pill(ctx, eyebrowText(), pad, y, T.ink, T.light, 26 * u); brandMark(ctx, W - pad, y, 47 * u, T.ink, 'right', `900 ${28 * u}px ${SANS}`);
+    pill(ctx, eyebrowText(), pad, y, T.primary, onColor(T.primary), 26 * u); brandMark(ctx, W - pad, y, 47 * u, T.primary, 'right', `900 ${28 * u}px ${SANS}`);
     y += 47 * u + 30 * u;
     const tb = block(ctx, f.title, W - pad * 2, { family: HEAD, weight: 400, size: 106 * u, min: 66 * u, maxLines: 3, lh: 1.24 });
     y = drawBlock(ctx, tb, pad, y, { fg: T.ink, hl: T.hl });
@@ -738,7 +775,7 @@ function drawCover(ctx, W, H, still, opt, T){
     const ph = H - y - (tall ? safeB + 40 * u : 100 * u);
     photoFrame(ctx, still, pad, y, W - pad * 2 - 14 * u, ph, T, { u });
     sticker(ctx, W - pad - 50 * u, y + 40 * u, 96 * u, stickerText(), T, -12);
-    if (opt.swipe) pill(ctx, '넘겨보세요  →', W / 2, y + ph - 90 * u, '#FFFFFF', T.ink, 26 * u, 'center');
+    if (opt.swipe) pill(ctx, '넘겨보세요  →', W / 2, y + ph - 90 * u, T.pop, onColor(T.pop), 26 * u, 'center');
     if (opt.page) { ctx.fillStyle = '#6B6D74'; ctx.font = `600 ${24 * u}px ${SANS}`; ctx.textAlign = 'center'; ctx.fillText(opt.page, W / 2, H - 40 * u); }
     return;
   }
@@ -775,19 +812,19 @@ function drawCover(ctx, W, H, still, opt, T){
   if (T.k === 'news') {
     paintBg(ctx, W, H, T);
     const top = tall ? 200 * u : 0;
-    ctx.fillStyle = T.primary === '#111214' ? '#2A2B30' : T.primary; ctx.fillRect(0, top, W, 112 * u);
-    pill(ctx, '오늘의 소식', pad, top + 30 * u, '#FFD43B', '#111214', 26 * u, 'left', SANS, 900);
-    ctx.fillStyle = '#fff'; ctx.font = `700 ${26 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(eyebrowText(), pad + 210 * u, top + 70 * u);
-    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText(dateDot(), W - pad, top + 70 * u);
+    ctx.fillStyle = T.primary; ctx.fillRect(0, top, W, 112 * u);
+    pill(ctx, '오늘의 소식', pad, top + 30 * u, T.pop, onColor(T.pop), 26 * u, 'left', SANS, 900);
+    ctx.fillStyle = onColor(T.primary); ctx.font = `700 ${26 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(eyebrowText(), pad + 210 * u, top + 70 * u);
+    ctx.textAlign = 'right'; ctx.fillStyle = rgba(onColor(T.primary), .8); ctx.fillText(dateDot(), W - pad, top + 70 * u);
     const py = top + 112 * u, ph = (W) * (tall ? .9 : .62);
     photoFrame(ctx, still, 0, py, W, ph, T, { u });
     let y = py + ph + 46 * u;
     const tb = block(ctx, f.title, W - pad * 2, { family: SANS, weight: 900, size: 88 * u, min: 56 * u, maxLines: 3, lh: 1.26 });
-    y = drawBlock(ctx, tb, pad, y, { fg: '#FFFFFF', hl: T.hl });
-    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = `500 ${30 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(wrap(ctx, plain(f.sub), W - pad * 2)[0] || '', pad, y + 46 * u);
+    y = drawBlock(ctx, tb, pad, y, { fg: T.ink, hl: T.hl });
+    ctx.fillStyle = T.sub; ctx.font = `500 ${30 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(wrap(ctx, plain(f.sub), W - pad * 2)[0] || '', pad, y + 46 * u);
     const tk = tall ? H - safeB : H - 84 * u;
-    ctx.fillStyle = T.accent; ctx.fillRect(0, tk, W, 84 * u);
-    ctx.fillStyle = onColor(T.accent); ctx.font = `800 ${28 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(`${b.name}  ·  ${plain(b.sub)}`, pad, tk + 53 * u);
+    ctx.fillStyle = T.soft; ctx.fillRect(0, tk, W, 84 * u);
+    ctx.fillStyle = T.primary; ctx.font = `800 ${28 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(`${b.name}  ·  ${plain(b.sub)}`, pad, tk + 53 * u);
     if (opt.swipe) { ctx.textAlign = 'right'; ctx.fillText('넘겨서 자세히 보기  →', W - pad, tk + 53 * u); }
     return;
   }
@@ -831,25 +868,28 @@ function drawPhoto(ctx, W, H, still, cap, n, page, T, head, dot){
   const num = String(n).padStart(2, '0');
   if (T.k === 'bold') {
     paintBg(ctx, W, H, T); photoFrame(ctx, still, 0, 0, W, H, T, { u });
-    vGrad(ctx, 0, H * .42, W, H * .58, 'rgba(0,0,0,0)', 'rgba(0,0,0,.84)');
-    vGrad(ctx, 0, 0, W, H * .16, 'rgba(0,0,0,.4)', 'rgba(0,0,0,0)');
-    brandMark(ctx, pad, 60 * u, 46 * u, 'rgba(255,255,255,.92)');
-    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = `600 ${26 * u}px ${SANS}`; ctx.textAlign = 'right'; ctx.fillText(page, W - pad, 92 * u);
-    const hb = head ? block(ctx, head, W - pad * 2, { family: HEAD, weight: 400, size: 92 * u, min: 60 * u, maxLines: 3, lh: 1.12 }) : null;
-    const cb = cap ? block(ctx, cap, W - pad * 2, { family: SANS, weight: 800, size: head ? 40 * u : 56 * u, min: 34 * u, maxLines: 3, lh: 1.34 }) : null;
-    let total = (hb ? hb.h + 30 * u : 0) + (cb ? cb.h : 0) + 80 * u;
-    let y = H - 110 * u - total;
-    ctx.fillStyle = T.accent; ctx.font = `400 ${56 * u}px ${HEAD}`; ctx.textAlign = 'left'; ctx.fillText(head ? '잠깐!' : num, pad, y + 50 * u); y += 80 * u;
-    if (hb) y = drawBlock(ctx, hb, pad, y, { fg: '#FFFFFF', hl: T.hl }) + 30 * u;
-    if (cb) drawBlock(ctx, cb, pad, y, { fg: head ? 'rgba(255,255,255,.9)' : '#FFFFFF', hl: T.hl });
-    if (dot) dotsRow(ctx, W / 2, H - 48 * u, dot[0], dot[1], u, '#FFFFFF', 'rgba(255,255,255,.4)');
+    vGrad(ctx, 0, 0, W, H * .16, 'rgba(0,0,0,.3)', 'rgba(0,0,0,0)');
+    brandMark(ctx, pad, 60 * u, 46 * u, 'rgba(255,255,255,.95)');
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = `600 ${26 * u}px ${SANS}`; ctx.textAlign = 'right'; ctx.fillText(page, W - pad, 92 * u);
+    const cw = W - pad * 2, ip = 44 * u;
+    const hb = head ? block(ctx, head, cw - ip * 2, { family: HEAD, weight: 400, size: 80 * u, min: 54 * u, maxLines: 3, lh: 1.16 }) : null;
+    const cb = cap ? block(ctx, cap, cw - ip * 2, { family: SANS, weight: 800, size: head ? 36 * u : 48 * u, min: 32 * u, maxLines: 3, lh: 1.36 }) : null;
+    if (!hb && !cb) return;
+    const bh = 24 * u * 1.8, ch = ip + bh + 22 * u + (hb ? hb.h + (cb ? 22 * u : 0) : 0) + (cb ? cb.h : 0) + ip;
+    const cy = H - 96 * u - ch;
+    card(ctx, pad, cy, cw, ch, T, u);
+    let y = cy + ip;
+    pill(ctx, head ? '잠깐! 핵심만 먼저' : `POINT ${num}`, pad + ip, y, head ? T.pop : T.primary, onColor(head ? T.pop : T.primary), 24 * u); y += bh + 22 * u;
+    if (hb) y = drawBlock(ctx, hb, pad + ip, y, { fg: T.ink, hl: T.hl }) + 22 * u;
+    if (cb) drawBlock(ctx, cb, pad + ip, y, { fg: head ? T.sub : T.ink, hl: T.hl });
+    if (dot) dotsRow(ctx, W / 2, H - 48 * u, dot[0], dot[1], u, '#FFFFFF', 'rgba(255,255,255,.55)');
     return;
   }
   if (T.k === 'pop') {
     paintBg(ctx, W, H, T);
     let y = 80 * u;
     if (head) { const hb = block(ctx, head, W - pad * 2, { family: HEAD, weight: 400, size: 84 * u, min: 56 * u, maxLines: 2, lh: 1.24 }); y = drawBlock(ctx, hb, pad, y, { fg: T.ink, hl: T.hl }) + 40 * u; }
-    else { pill(ctx, `POINT ${num}`, pad, y, T.ink, T.light, 26 * u); y += 90 * u; }
+    else { pill(ctx, `POINT ${num}`, pad, y, T.primary, onColor(T.primary), 26 * u); y += 90 * u; }
     const bubbleH = cap ? 190 * u : 0;
     const ph = H - y - bubbleH - 110 * u;
     photoFrame(ctx, still, pad, y, W - pad * 2 - 14 * u, ph, T, { u });
@@ -857,8 +897,8 @@ function drawPhoto(ctx, W, H, still, cap, n, page, T, head, dot){
       const bw = W - pad * 2 - 60 * u, bx = pad + 30 * u, by = y + ph - 40 * u;
       const cb = block(ctx, cap, bw - 70 * u, { family: SANS, weight: 800, size: 46 * u, min: 34 * u, maxLines: 2, lh: 1.32 });
       const bh = cb.h + 70 * u;
-      ctx.fillStyle = T.ink; rrect(ctx, bx + 10 * u, by + 10 * u, bw, bh, 28 * u); ctx.fill();
-      ctx.fillStyle = '#FFFFFF'; rrect(ctx, bx, by, bw, bh, 28 * u); ctx.fill(); ctx.lineWidth = 5 * u; ctx.strokeStyle = T.ink; ctx.stroke();
+      ctx.fillStyle = T.primary; rrect(ctx, bx + 10 * u, by + 10 * u, bw, bh, 28 * u); ctx.fill();
+      ctx.fillStyle = '#FFFFFF'; rrect(ctx, bx, by, bw, bh, 28 * u); ctx.fill(); ctx.lineWidth = 4 * u; ctx.strokeStyle = T.ink; ctx.stroke();
       ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(bx + 90 * u, by + 2 * u); ctx.lineTo(bx + 120 * u, by - 34 * u); ctx.lineTo(bx + 150 * u, by + 2 * u); ctx.fill();
       ctx.beginPath(); ctx.moveTo(bx + 90 * u, by); ctx.lineTo(bx + 120 * u, by - 34 * u); ctx.lineTo(bx + 150 * u, by); ctx.stroke();
       drawBlock(ctx, cb, bx + 35 * u, by + 35 * u, { fg: T.ink, hl: T.hl });
@@ -880,13 +920,14 @@ function drawPhoto(ctx, W, H, still, cap, n, page, T, head, dot){
   if (T.k === 'news') {
     paintBg(ctx, W, H, T);
     const ph = H * .7; photoFrame(ctx, still, 0, 0, W, ph, T, { u });
-    pill(ctx, head ? '핵심만 먼저' : `POINT ${num}`, pad, ph - 80 * u, '#FFD43B', '#111214', 28 * u, 'left', SANS, 900);
-    ctx.fillStyle = T.primary === '#111214' ? '#2A2B30' : T.primary; ctx.fillRect(0, ph, W, H - ph);
+    ctx.fillStyle = T.soft; ctx.fillRect(0, ph, W, H - ph);
+    ctx.fillStyle = T.primary; ctx.fillRect(0, ph, W, 10 * u);
+    pill(ctx, head ? '핵심만 먼저' : `POINT ${num}`, pad, ph - 80 * u, T.pop, onColor(T.pop), 28 * u, 'left', SANS, 900);
     let y = ph + 50 * u;
     const main = head || cap;
-    if (main) { const hb = block(ctx, main, W - pad * 2, { family: SANS, weight: 900, size: head ? 70 * u : 58 * u, min: 42 * u, maxLines: 3, lh: 1.28 }); y = drawBlock(ctx, hb, pad, y, { fg: '#FFFFFF', hl: T.hl }); }
-    if (head && cap) { ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = `500 ${32 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(wrap(ctx, plain(cap), W - pad * 2)[0] || '', pad, y + 50 * u); }
-    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = `600 ${24 * u}px ${SANS}`; ctx.textAlign = 'right'; ctx.fillText(`${B().name}  ${page}`, W - pad, H - 44 * u);
+    if (main) { const hb = block(ctx, main, W - pad * 2, { family: SANS, weight: 900, size: head ? 70 * u : 58 * u, min: 42 * u, maxLines: 3, lh: 1.28 }); y = drawBlock(ctx, hb, pad, y, { fg: T.ink, hl: T.hl }); }
+    if (head && cap) { ctx.fillStyle = T.sub; ctx.font = `500 ${32 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(wrap(ctx, plain(cap), W - pad * 2)[0] || '', pad, y + 50 * u); }
+    ctx.fillStyle = T.sub; ctx.font = `600 ${24 * u}px ${SANS}`; ctx.textAlign = 'right'; ctx.fillText(`${B().name}  ${page}`, W - pad, H - 44 * u);
     return;
   }
   if (T.k === 'film') {
@@ -968,9 +1009,9 @@ function drawPoints(ctx, W, H, page, T){
   let y = (tall ? 260 : 100) * u;
   // 저장 배지
   const bw = 210 * u, bx = W - pad - bw;
-  ctx.fillStyle = T.k === 'pop' ? T.ink : T.accent; rrect(ctx, bx, y - 10 * u, bw, 56 * u, 28 * u); ctx.fill();
-  ctx.fillStyle = T.k === 'pop' ? T.light : onColor(T.accent); ctx.font = `800 ${24 * u}px ${SANS}`; ctx.textAlign = 'center'; ctx.fillText('🔖 저장해 두세요', bx + bw / 2, y + 27 * u);
-  ctx.textAlign = 'left'; ctx.fillStyle = T.accent; ctx.font = `800 ${24 * u}px ${SANS}`; ctx.fillText('P O I N T', pad, y + 26 * u);
+  ctx.fillStyle = T.pop; rrect(ctx, bx, y - 10 * u, bw, 56 * u, 28 * u); ctx.fill();
+  ctx.fillStyle = onColor(T.pop); ctx.font = `800 ${24 * u}px ${SANS}`; ctx.textAlign = 'center'; ctx.fillText('🔖 저장해 두세요', bx + bw / 2, y + 27 * u);
+  ctx.textAlign = 'left'; ctx.fillStyle = T.primary; ctx.font = `800 ${24 * u}px ${SANS}`; ctx.fillText('P O I N T', pad, y + 26 * u);
   y += 80 * u;
   const hb = block(ctx, f.sub || f.title, W - pad * 2, { family: T.disp, weight: T.dw, size: (T.disp === HEAD ? 76 : 62) * u, min: 44 * u, maxLines: 2, lh: T.lh });
   y = drawBlock(ctx, hb, pad, y, { fg: T.fg, hl: T.hl }) + 50 * u;
@@ -979,13 +1020,13 @@ function drawPoints(ctx, W, H, page, T){
     const yy = y + step * i;
     if (T.k === 'pop' || T.k === 'news') {
       const ch = step - 24 * u;
-      if (T.k === 'pop') { ctx.fillStyle = T.ink; rrect(ctx, pad + 10 * u, yy + 10 * u, W - pad * 2 - 10 * u, ch, 24 * u); ctx.fill(); }
-      ctx.fillStyle = T.k === 'pop' ? '#FFFFFF' : 'rgba(255,255,255,.07)'; rrect(ctx, pad, yy, W - pad * 2 - 10 * u, ch, 24 * u); ctx.fill();
-      if (T.k === 'pop') { ctx.lineWidth = 5 * u; ctx.strokeStyle = T.ink; ctx.stroke(); }
-      ctx.fillStyle = T.k === 'pop' ? T.accent : '#FFD43B'; ctx.beginPath(); ctx.arc(pad + 70 * u, yy + ch / 2, 40 * u, 0, 7); ctx.fill();
-      ctx.fillStyle = T.k === 'pop' ? onColor(T.accent) : '#111214'; ctx.font = `400 ${44 * u}px ${HEAD}`; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), pad + 70 * u, yy + ch / 2 + 16 * u);
+      if (T.k === 'pop') { ctx.fillStyle = T.primary; rrect(ctx, pad + 10 * u, yy + 10 * u, W - pad * 2 - 10 * u, ch, 24 * u); ctx.fill(); }
+      ctx.fillStyle = T.k === 'pop' ? '#FFFFFF' : T.soft; rrect(ctx, pad, yy, W - pad * 2 - 10 * u, ch, 24 * u); ctx.fill();
+      if (T.k === 'pop') { ctx.lineWidth = 4 * u; ctx.strokeStyle = T.ink; ctx.stroke(); }
+      ctx.fillStyle = T.k === 'pop' ? T.pop : T.primary; ctx.beginPath(); ctx.arc(pad + 70 * u, yy + ch / 2, 40 * u, 0, 7); ctx.fill();
+      ctx.fillStyle = T.k === 'pop' ? onColor(T.pop) : onColor(T.primary); ctx.font = `400 ${44 * u}px ${HEAD}`; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), pad + 70 * u, yy + ch / 2 + 16 * u);
       const tb = block(ctx, p, W - pad * 2 - 170 * u, { family: SANS, weight: 800, size: 44 * u, min: 32 * u, maxLines: 2, lh: 1.3 });
-      drawBlock(ctx, tb, pad + 140 * u, yy + ch / 2 - tb.h / 2, { fg: T.k === 'pop' ? T.ink : '#FFFFFF', hl: T.k === 'pop' ? { mode: 'marker', color: rgba(T.accent, .55) } : T.hl });
+      drawBlock(ctx, tb, pad + 140 * u, yy + ch / 2 - tb.h / 2, { fg: T.ink, hl: T.k === 'pop' ? { mode: 'marker', color: rgba(T.pop, .8) } : T.hl });
     } else if (T.k === 'film') {
       ctx.strokeStyle = rgba(T.primary, .2); ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(pad, yy + step - 10 * u); ctx.lineTo(W - pad, yy + step - 10 * u); ctx.stroke();
       ctx.fillStyle = T.primary; ctx.font = `400 ${76 * u}px ${PEN}`; ctx.textAlign = 'left'; ctx.fillText(`${i + 1}.`, pad, yy + step * .62);
@@ -993,9 +1034,9 @@ function drawPoints(ctx, W, H, page, T){
       ls.forEach((l, k) => ctx.fillText(l, pad + 100 * u, yy + step * .62 - (ls.length - 1) * 30 * u + k * 60 * u));
     } else {
       if (i > 0) { ctx.strokeStyle = T.fg === '#FFFFFF' ? 'rgba(255,255,255,.2)' : rgba(T.primary, .18); ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(pad, yy); ctx.lineTo(W - pad, yy); ctx.stroke(); }
-      ctx.fillStyle = T.accent; ctx.font = T.k === 'magazine' ? `700 ${84 * u}px ${SERIF}` : `400 ${92 * u}px ${HEAD}`; ctx.textAlign = 'left'; ctx.fillText(String(i + 1).padStart(2, '0'), pad, yy + step * .5 + 32 * u);
+      ctx.fillStyle = T.primary; ctx.font = T.k === 'magazine' ? `700 ${84 * u}px ${SERIF}` : `400 ${92 * u}px ${HEAD}`; ctx.textAlign = 'left'; ctx.fillText(String(i + 1).padStart(2, '0'), pad, yy + step * .5 + 32 * u);
       const tb = block(ctx, p, W - pad * 2 - 180 * u, { family: SANS, weight: 800, size: 46 * u, min: 32 * u, maxLines: 2, lh: 1.3 });
-      drawBlock(ctx, tb, pad + 180 * u, yy + step * .5 - tb.h / 2, { fg: T.fg, hl: T.k === 'bold' ? { mode: 'color', color: T.accent } : T.hl });
+      drawBlock(ctx, tb, pad + 180 * u, yy + step * .5 - tb.h / 2, { fg: T.fg, hl: T.hl });
     }
   });
   ctx.fillStyle = T.sub; ctx.font = `600 ${24 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(B().name, pad, H - (tall ? 300 : 50) * u);
@@ -1007,14 +1048,13 @@ function drawPoints(ctx, W, H, page, T){
    ========================================================= */
 function drawQuote(ctx, W, H, still, page, T){
   const f = F(), u = W / 1080, pad = 90 * u;
-  if (T.k === 'bold' || T.k === 'news') { paintBg(ctx, W, H, T); ctx.save(); ctx.globalAlpha = .25; cover(ctx, still, 0, 0, W, H); ctx.restore(); ctx.fillStyle = rgba(T.k === 'news' ? '#111214' : T.primary, .72); ctx.fillRect(0, 0, W, H); }
-  else paintBg(ctx, W, H, T);
+  paintBg(ctx, W, H, T, T.k === 'news' || T.k === 'minimal' ? T.soft : T.bg);
   const fg = T.fg;
-  ctx.fillStyle = T.k === 'news' ? '#FFD43B' : T.accent; ctx.font = `900 ${300 * u}px ${SERIF}`; ctx.textAlign = 'left'; ctx.fillText('“', pad - 20 * u, 360 * u);
-  ctx.fillStyle = T.k === 'pop' ? T.ink : T.accent; ctx.font = `800 ${24 * u}px ${SANS}`; ctx.fillText('R E V I E W', pad, 150 * u);
+  ctx.fillStyle = T.primary; ctx.font = `900 ${300 * u}px ${SERIF}`; ctx.textAlign = 'left'; ctx.fillText('“', pad - 20 * u, 360 * u);
+  ctx.fillStyle = T.accent; ctx.font = `800 ${24 * u}px ${SANS}`; ctx.fillText('R E V I E W', pad, 150 * u);
   const qb = block(ctx, f.quote, W - pad * 2, { family: T.k === 'film' ? PEN : T.disp === HEAD ? SANS : T.disp, weight: T.k === 'film' ? 400 : T.disp === HEAD ? 800 : T.dw, size: (T.k === 'film' ? 84 : 62) * u, min: 42 * u, maxLines: 6, lh: T.k === 'film' ? 1.15 : 1.42 });
   const y = drawBlock(ctx, qb, pad, 420 * u, { fg, hl: T.hl });
-  ctx.fillStyle = T.fg === '#FFFFFF' ? 'rgba(255,255,255,.4)' : rgba(T.primary, .4); ctx.fillRect(pad, y + 50 * u, 80 * u, 4 * u);
+  ctx.fillStyle = T.pop; ctx.fillRect(pad, y + 50 * u, 80 * u, 6 * u);
   ctx.fillStyle = T.sub; ctx.font = `700 ${32 * u}px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(f.quoteBy ? `— ${f.quoteBy}` : '', pad, y + 110 * u);
   ctx.font = `600 ${24 * u}px ${SANS}`; ctx.fillText(B().name, pad, H - 50 * u);
   if (page) { ctx.textAlign = 'right'; ctx.fillText(page, W - pad, H - 50 * u); }
@@ -1051,10 +1091,10 @@ function drawInfo(ctx, W, H, page, T){
 function drawCTA(ctx, W, H, still, page, T){
   const b = B(), f = F(), u = W / 1080, pad = 84 * u, cx = W / 2;
   let fg;
-  if (T.k === 'film') { paintBg(ctx, W, H, T); fg = T.fg; }
-  else if (T.k === 'minimal') { paintBg(ctx, W, H, T); fg = T.ink; }
-  else if (T.k === 'pop') { paintBg(ctx, W, H, T, T.accent); fg = onColor(T.accent); }
-  else { paintBg(ctx, W, H, T, T.k === 'news' ? '#111214' : T.primary); if (still && state.media.length) { ctx.save(); ctx.globalAlpha = .18; cover(ctx, still, 0, 0, W, H); ctx.restore(); } fg = '#FFFFFF'; }
+  let ctaBg;
+  if (T.k === 'film' || T.k === 'minimal' || T.k === 'magazine') { ctaBg = T.k === 'minimal' ? T.soft : T.light; paintBg(ctx, W, H, T, ctaBg); fg = T.ink; }
+  else if (T.k === 'pop') { ctaBg = T.pop; paintBg(ctx, W, H, T, ctaBg); fg = onColor(T.pop); }
+  else { ctaBg = T.primary; paintBg(ctx, W, H, T, ctaBg); if (still && state.media.length) { ctx.save(); ctx.globalAlpha = .14; cover(ctx, still, 0, 0, W, H); ctx.restore(); } fg = onColor(T.primary); }
   brandMark(ctx, cx, H * .17, 82 * u, fg, 'center', T.k === 'film' ? `400 ${72 * u}px ${PEN}` : undefined);
   const tg = block(ctx, b.tagline, W - pad * 2, { family: T.k === 'pop' || T.k === 'bold' ? HEAD : SERIF, weight: T.k === 'pop' || T.k === 'bold' ? 400 : 700, size: 76 * u, min: 48 * u, maxLines: 3, lh: 1.28 });
   ctx.font = tg.font; let y = H * .36;
@@ -1062,14 +1102,14 @@ function drawCTA(ctx, W, H, still, page, T){
   y += tg.h + 70 * u;
   // 행동 버튼
   ctx.font = `800 ${40 * u}px ${SANS}`; const label = `${plain(f.cta)}  →`; const bw = Math.min(W - pad * 2, ctx.measureText(label).width + 110 * u), bh = 104 * u;
-  const btnBg = T.k === 'pop' ? '#FFFFFF' : T.k === 'news' ? '#FFD43B' : T.k === 'minimal' || T.k === 'film' ? T.primary : T.accent;
+  const btnBg = T.k === 'pop' ? '#FFFFFF' : (ctaBg === T.primary ? T.pop : T.primary);
   const btnFg = T.k === 'pop' ? T.ink : onColor(btnBg);
-  if (T.k === 'pop') { ctx.fillStyle = T.ink; rrect(ctx, cx - bw / 2 + 10 * u, y + 10 * u, bw, bh, bh / 2); ctx.fill(); }
+  if (T.k === 'pop') { ctx.fillStyle = T.primary; rrect(ctx, cx - bw / 2 + 10 * u, y + 10 * u, bw, bh, bh / 2); ctx.fill(); }
   ctx.fillStyle = btnBg; rrect(ctx, cx - bw / 2, y, bw, bh, bh / 2); ctx.fill();
-  if (T.k === 'pop') { ctx.lineWidth = 5 * u; ctx.strokeStyle = T.ink; ctx.stroke(); }
+  if (T.k === 'pop') { ctx.lineWidth = 4 * u; ctx.strokeStyle = T.ink; ctx.stroke(); }
   ctx.fillStyle = btnFg; ctx.textAlign = 'center'; ctx.fillText(label, cx, y + bh / 2 + 14 * u);
   y += bh + 80 * u;
-  if (b.contact) { ctx.fillStyle = fg; ctx.font = `900 ${54 * u}px ${SANS}`; ctx.fillText(b.contact, cx, y); y += 70 * u; }
+  if (b.contact) { ctx.fillStyle = fg === T.ink ? T.primary : fg; ctx.font = `900 ${54 * u}px ${SANS}`; ctx.fillText(b.contact, cx, y); y += 70 * u; }
   if (b.handle) { ctx.fillStyle = fg; ctx.globalAlpha = .8; ctx.font = `600 ${32 * u}px ${SANS}`; ctx.fillText(b.handle, cx, y); ctx.globalAlpha = 1; y += 60 * u; }
   ctx.globalAlpha = .75; ctx.fillStyle = fg; ctx.font = `600 ${26 * u}px ${SANS}`; ctx.fillText('도움이 됐다면  ♡ 저장   ↗ 공유', cx, H - (H / W > 1.5 ? 330 : 110) * u); ctx.globalAlpha = 1;
   if (page) { ctx.fillStyle = fg; ctx.globalAlpha = .6; ctx.font = `600 ${22 * u}px ${SANS}`; ctx.fillText(page, cx, H - 50 * u); ctx.globalAlpha = 1; }
@@ -1122,46 +1162,47 @@ function buildYT(){
   cover(x, s[0], 0, 0, W, H);
   let g = x.createLinearGradient(0, 0, W * .75, 0); g.addColorStop(0, rgba(b.primary, 1)); g.addColorStop(.5, rgba(b.primary, .9)); g.addColorStop(1, rgba(b.primary, 0)); x.fillStyle = g; x.fillRect(0, 0, W, H);
   let tb = block(x, text, 660, { family: HEAD, weight: 400, size: 176, min: 100, maxLines: 2, lh: 1.08 });
-  let y = drawBlock(x, tb, 70, H / 2 - tb.h / 2, { fg: '#FFFFFF', hl: { mode: 'color', color: b.accent }, stroke: { w: 10, c: rgba('#000000', .35) } });
-  x.fillStyle = b.accent; x.fillRect(70, y + 26, 160, 14);
+  let y = drawBlock(x, tb, 70, H / 2 - tb.h / 2, { fg: '#FFFFFF', hl: { mode: 'color', color: b.pop }, stroke: { w: 10, c: rgba('#000000', .2) } });
+  x.fillStyle = b.pop; x.fillRect(70, y + 26, 160, 14);
   brandMark(x, 70, H - 96, 46, 'rgba(255,255,255,.92)');
   out.push({ c, label: 'A · 강렬형' });
   // B 분할형
   c = mk(W, H); x = c.getContext('2d');
   x.fillStyle = b.light; x.fillRect(0, 0, W, H); cover(x, s[0], W * .46, 0, W * .54, H);
-  x.fillStyle = b.accent; x.fillRect(W * .46 - 14, 0, 14, H);
+  x.fillStyle = b.primary; x.fillRect(W * .46 - 14, 0, 14, H);
   tb = block(x, text, 500, { family: HEAD, weight: 400, size: 160, min: 90, maxLines: 2, lh: 1.12 });
-  drawBlock(x, tb, 60, H / 2 - tb.h / 2, { fg: '#16171B', hl: { mode: 'marker', color: rgba(b.accent, .6) } });
+  drawBlock(x, tb, 60, H / 2 - tb.h / 2, { fg: b.ink, hl: { mode: 'marker', color: rgba(b.pop, .9) } });
   x.fillStyle = b.primary; x.font = `800 30px ${SANS}`; x.textAlign = 'left'; x.fillText(b.name, 62, H - 60);
   out.push({ c, label: 'B · 분할형' });
   // C 예능형
   c = mk(W, H); x = c.getContext('2d');
   cover(x, s[0], 0, 0, W, H); vGrad(x, 0, H * .35, W, H * .65, 'rgba(0,0,0,0)', 'rgba(0,0,0,.6)');
   tb = block(x, text, W - 120, { family: HEAD, weight: 400, size: 190, min: 110, maxLines: 2, lh: 1.04 });
-  x.font = tb.font; tb.lines.forEach((l, i) => drawRich(x, l, W / 2, H - 70 - (tb.lines.length - 1 - i) * tb.lh, { align: 'center', fg: '#FFFFFF', size: tb.size, hl: { mode: 'color', color: '#FFE14D' }, stroke: { w: 26, c: '#111214' } }));
+  x.font = tb.font; tb.lines.forEach((l, i) => drawRich(x, l, W / 2, H - 70 - (tb.lines.length - 1 - i) * tb.lh, { align: 'center', fg: '#FFFFFF', size: tb.size, hl: { mode: 'color', color: b.pop }, stroke: { w: 26, c: b.ink } }));
   pill(x, b.name, 40, 36, b.primary, onColor(b.primary), 30, 'left', SANS, 900);
   out.push({ c, label: 'C · 예능형' });
   // D 뉴스형
   c = mk(W, H); x = c.getContext('2d');
   cover(x, s[0], 0, 0, W, H);
-  x.fillStyle = 'rgba(17,18,20,.92)'; x.fillRect(0, H * .62, W, H * .38);
-  pill(x, eyebrowText(), 50, H * .62 - 34, '#FFD43B', '#111214', 34, 'left', SANS, 900);
+  x.fillStyle = rgba(b.light, .96); x.fillRect(0, H * .62, W, H * .38);
+  x.fillStyle = b.primary; x.fillRect(0, H * .62, W, 8);
+  pill(x, eyebrowText(), 50, H * .62 - 34, b.primary, onColor(b.primary), 34, 'left', SANS, 900);
   tb = block(x, f.title, W - 100, { family: SANS, weight: 900, size: 78, min: 52, maxLines: 2, lh: 1.22 });
-  drawBlock(x, tb, 50, H * .62 + 40, { fg: '#FFFFFF', hl: { mode: 'box', color: '#FFD43B', fg: '#111214' } });
-  x.fillStyle = b.accent; x.fillRect(0, H - 12, W, 12);
+  drawBlock(x, tb, 50, H * .62 + 40, { fg: b.ink, hl: { mode: 'box', color: b.pop, fg: onColor(b.pop) } });
+  x.fillStyle = b.primary; x.fillRect(0, H - 12, W, 12);
   out.push({ c, label: 'D · 뉴스형' });
   return out.map((o, i) => Object.assign(o, { name: `${slug()}_${today()}_유튜브썸네일_${'ABCD'[i]}.jpg` }));
 }
 function buildBlog(){
   const T = theme(), b = B(), f = F(), s = stills(), W = 1200, H = 800, out = [];
   let c = mk(W, H), x = c.getContext('2d');
-  cover(x, s[0], 0, 0, W, H); x.fillStyle = 'rgba(0,0,0,.34)'; x.fillRect(0, 0, W, H);
+  cover(x, s[0], 0, 0, W, H); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(0, 0, W, H);
   const cw = 860; const tb = block(x, f.title, cw - 140, { family: T.disp === HEAD ? HEAD : SERIF, weight: T.disp === HEAD ? 400 : 700, size: 62, min: 42, maxLines: 2, lh: 1.28 });
   const ch = 110 + tb.h + 80, cy = (H - ch) / 2;
   x.fillStyle = 'rgba(255,255,255,.96)'; x.fillRect((W - cw) / 2, cy, cw, ch);
-  x.fillStyle = b.accent; x.fillRect((W - cw) / 2, cy, cw, 8);
+  x.fillStyle = b.primary; x.fillRect((W - cw) / 2, cy, cw, 8);
   x.textAlign = 'center'; x.fillStyle = b.primary; x.font = `800 22px ${SANS}`; x.fillText(eyebrowText().split('').join(' '), W / 2, cy + 64);
-  x.font = tb.font; tb.lines.forEach((l, i) => drawRich(x, l, W / 2, cy + 86 + tb.size * .9 + i * tb.lh, { align: 'center', fg: '#16171B', size: tb.size, hl: { mode: 'marker', color: rgba(b.accent, .45) } }));
+  x.font = tb.font; tb.lines.forEach((l, i) => drawRich(x, l, W / 2, cy + 86 + tb.size * .9 + i * tb.lh, { align: 'center', fg: '#16171B', size: tb.size, hl: { mode: 'marker', color: rgba(b.pop, .8) } }));
   x.fillStyle = '#5C5D63'; x.font = `500 24px ${SANS}`; x.textAlign = 'center'; x.fillText(plain(f.sub) || b.name, W / 2, cy + ch - 34);
   out.push({ c, label: '대표 이미지' });
   s.forEach((st, i) => {
@@ -1183,11 +1224,11 @@ function buildThreads(){
   const T = theme(), b = B(), f = F(), s = stills(), W = 1080, H = 1350, u = 1, out = [];
   let c = mk(W, H), x = c.getContext('2d');
   paintBg(x, W, H, T);
-  x.fillStyle = T.k === 'news' ? '#FFD43B' : T.accent; x.font = `900 260px ${SERIF}`; x.textAlign = 'left'; x.fillText('“', 70, 320);
+  x.fillStyle = T.primary; x.font = `900 260px ${SERIF}`; x.textAlign = 'left'; x.fillText('“', 70, 320);
   const tb = block(x, f.title, W - 180, { family: T.k === 'film' ? PEN : T.disp, weight: T.k === 'film' ? 400 : T.dw, size: T.k === 'film' ? 110 : 80, min: 50, maxLines: 5, lh: T.k === 'film' ? 1.1 : 1.36 });
   let y = drawBlock(x, tb, 90, 400, { fg: T.fg, hl: T.hl });
   if (f.sub) { x.fillStyle = T.sub; x.font = `500 34px ${SANS}`; wrap(x, plain(f.sub), W - 180).slice(0, 2).forEach((l, i) => x.fillText(l, 90, y + 70 + i * 48)); }
-  x.fillStyle = T.fg === '#FFFFFF' ? 'rgba(255,255,255,.8)' : T.primary; x.font = `700 30px ${SANS}`; x.fillText(b.handle || b.name, 90, H - 90);
+  x.fillStyle = T.primary; x.font = `700 30px ${SANS}`; x.fillText(b.handle || b.name, 90, H - 90);
   out.push({ c, label: '문장 카드' });
   c = mk(W, H); x = c.getContext('2d');
   drawPhoto(x, W, H, s[0], captionFor(1) || f.sub, 1, '', T, '', null);
@@ -1260,12 +1301,12 @@ function drawCaption(ctx, cap, cx, y, maxW, local, T, onDark){
   const st = state.capStyle;
   if (st === 'variety') {
     const cb = block(ctx, cap, maxW, { family: HEAD, weight: 400, size: 70, min: 48, maxLines: 2, lh: 1.16 });
-    ctx.font = cb.font; cb.lines.forEach((l, i) => drawRich(ctx, l, 0, i * cb.lh, { align: 'center', fg: '#FFFFFF', size: cb.size, hl: { mode: 'color', color: '#FFE14D' }, stroke: { w: 14, c: '#111214' } }));
+    ctx.font = cb.font; cb.lines.forEach((l, i) => drawRich(ctx, l, 0, i * cb.lh, { align: 'center', fg: '#FFFFFF', size: cb.size, hl: { mode: 'color', color: '#FFE14D' }, stroke: { w: 14, c: T.ink } }));
   } else if (st === 'box') {
     const cb = block(ctx, cap, maxW - 80, { family: SANS, weight: 800, size: 54, min: 40, maxLines: 2, lh: 1.3 });
     ctx.font = cb.font; const bw = Math.max(...cb.lines.map(l => ctx.measureText(txt(l)).width)) + 70, bh = cb.h + 44;
-    ctx.fillStyle = rgba(T.primary, .92); rrect(ctx, -bw / 2, -cb.size * .9 - 22, bw, bh, 22); ctx.fill();
-    cb.lines.forEach((l, i) => drawRich(ctx, l, 0, i * cb.lh, { align: 'center', fg: onColor(T.primary), size: cb.size, hl: { mode: 'color', color: T.accent } }));
+    ctx.fillStyle = rgba(T.primary, .94); rrect(ctx, -bw / 2, -cb.size * .9 - 22, bw, bh, 22); ctx.fill();
+    cb.lines.forEach((l, i) => drawRich(ctx, l, 0, i * cb.lh, { align: 'center', fg: onColor(T.primary), size: cb.size, hl: { mode: 'color', color: T.pop } }));
   } else {
     const cb = block(ctx, cap, maxW, { family: SANS, weight: 800, size: 54, min: 40, maxLines: 2, lh: 1.3 });
     ctx.font = cb.font; if (onDark !== false) { ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 14; }
@@ -1277,14 +1318,15 @@ function drawReelFrame(ctx, seg, local, elapsed, total){
   const W = 1080, H = 1920, T = theme(), f = F();
   if (seg.end) { drawCTA(ctx, W, H, stills().slice(-1)[0], '', T); return; }
   if (seg.intro) {
-    paintBg(ctx, W, H, T, T.k === 'bold' ? T.primary : T.k === 'news' ? '#111214' : T.k === 'pop' ? T.accent : T.bg);
-    const fg = T.k === 'pop' ? onColor(T.accent) : T.fg;
+    const ibg = T.k === 'bold' || T.k === 'news' ? T.primary : T.k === 'pop' ? T.pop : T.soft;
+    paintBg(ctx, W, H, T, ibg);
+    const fg = onColor(ibg) === '#FFFFFF' ? '#FFFFFF' : T.ink;
     const p = Math.min(1, local / 0.35), sc = 1.18 - 0.18 * (1 - Math.pow(1 - p, 3));
     ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(sc, sc);
     const tb = block(ctx, f.title, 900, { family: T.disp === SERIF ? SERIF : HEAD, weight: T.disp === SERIF ? 700 : 400, size: 120, min: 76, maxLines: 4, lh: 1.16 });
-    ctx.font = tb.font; tb.lines.forEach((l, i) => drawRich(ctx, l, 0, -tb.h / 2 + tb.size * .9 + i * tb.lh, { align: 'center', fg, size: tb.size, hl: T.k === 'pop' ? { mode: 'box', color: T.ink, fg: '#FFFFFF' } : T.hl }));
+    ctx.font = tb.font; tb.lines.forEach((l, i) => drawRich(ctx, l, 0, -tb.h / 2 + tb.size * .9 + i * tb.lh, { align: 'center', fg, size: tb.size, hl: ibg === T.primary ? { mode: 'box', color: T.pop, fg: onColor(T.pop) } : ibg === T.pop ? { mode: 'box', color: T.primary, fg: onColor(T.primary) } : T.hl }));
     ctx.restore();
-    pill(ctx, eyebrowText(), W / 2, H / 2 - tb.h / 2 - 140, T.k === 'pop' ? T.ink : T.accent, T.k === 'pop' ? '#FFFFFF' : onColor(T.accent), 30, 'center');
+    pill(ctx, eyebrowText(), W / 2, H / 2 - tb.h / 2 - 140, ibg === T.primary ? '#FFFFFF' : T.primary, ibg === T.primary ? T.primary : onColor(T.primary), 30, 'center');
     return;
   }
   const src = seg.m.kind === 'video' ? seg.m.el : seg.m.still;
@@ -1297,25 +1339,25 @@ function drawReelFrame(ctx, seg, local, elapsed, total){
     vGrad(ctx, 0, 1050, W, 870, 'rgba(0,0,0,0)', 'rgba(0,0,0,.5)');
     brandMark(ctx, W / 2, 168, 46, 'rgba(255,255,255,.92)', 'center');
     const tb = block(ctx, f.title, 940, { family: HEAD, weight: 400, size: 84, min: 56, maxLines: 2, lh: 1.14 });
-    ctx.font = tb.font; tb.lines.forEach((l, i) => drawRich(ctx, l, W / 2, 300 + i * tb.lh, { align: 'center', fg: '#FFFFFF', size: tb.size, hl: { mode: 'color', color: T.accent }, stroke: { w: 10, c: 'rgba(0,0,0,.55)' } }));
+    ctx.font = tb.font; tb.lines.forEach((l, i) => drawRich(ctx, l, W / 2, 300 + i * tb.lh, { align: 'center', fg: '#FFFFFF', size: tb.size, hl: { mode: 'color', color: T.pop }, stroke: { w: 10, c: 'rgba(0,0,0,.5)' } }));
     drawCaption(ctx, seg.cap, W / 2, 1330, 900, local, T);
-    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(0, H - 8, W, 8); ctx.fillStyle = T.accent; ctx.fillRect(0, H - 8, W * prog, 8);
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(0, H - 8, W, 8); ctx.fillStyle = T.pop; ctx.fillRect(0, H - 8, W * prog, 8);
     return;
   }
-  const bgc = T.k === 'bold' ? T.primary : T.k === 'pop' ? T.light : T.bg;
+  const bgc = T.k === 'bold' || T.k === 'news' ? T.soft : T.bg;
   paintBg(ctx, W, H, T, bgc);
-  const fg = T.k === 'bold' ? onColor(T.primary) : T.fg;
+  const fg = T.ink;
   const ry = 470, rh = 1080;
-  if (T.k === 'pop') { ctx.fillStyle = T.ink; ctx.fillRect(0, ry - 6, W, rh + 12); }
+  if (T.k === 'pop') { ctx.fillStyle = T.primary; ctx.fillRect(0, ry - 8, W, rh + 16); }
   cover(ctx, src, 0, ry, W, rh, zoom);
-  brandMark(ctx, W / 2, 140, 44, T.k === 'bold' || T.k === 'news' ? 'rgba(255,255,255,.85)' : T.primary, 'center', T.k === 'film' ? `400 44px ${PEN}` : undefined);
+  brandMark(ctx, W / 2, 140, 44, T.primary, 'center', T.k === 'film' ? `400 44px ${PEN}` : undefined);
   const tb = block(ctx, f.title, 960, { family: T.disp === SERIF ? SERIF : HEAD, weight: T.disp === SERIF ? 700 : 400, size: 80, min: 52, maxLines: 2, lh: 1.18 });
   ctx.font = tb.font; const ty = 232 + (2 - tb.lines.length) * tb.lh / 2;
   tb.lines.forEach((l, i) => drawRich(ctx, l, W / 2, ty + tb.size * .9 + i * tb.lh, { align: 'center', fg, size: tb.size, hl: T.hl }));
-  ctx.fillStyle = T.k === 'bold' || T.k === 'news' ? 'rgba(255,255,255,.18)' : rgba(T.primary, .15); ctx.fillRect(0, ry + rh, W, 10);
-  ctx.fillStyle = T.accent; ctx.fillRect(0, ry + rh, W * prog, 10);
+  ctx.fillStyle = rgba(T.primary, .15); ctx.fillRect(0, ry + rh, W, 10);
+  ctx.fillStyle = T.primary; ctx.fillRect(0, ry + rh, W * prog, 10);
   const capOnPhoto = state.capStyle === 'variety';
-  drawCaption(ctx, seg.cap, W / 2, capOnPhoto ? ry + rh - 150 : ry + rh + 120, 960, local, T, capOnPhoto ? true : (T.k === 'bold' || T.k === 'news'));
+  drawCaption(ctx, seg.cap, W / 2, capOnPhoto ? ry + rh - 150 : ry + rh + 120, 960, local, T, capOnPhoto ? true : false);
 }
 function drawReelPoster(){
   const cv = $('reelCanvas'), ctx = cv.getContext('2d'); const { segs, total } = segments();
@@ -1590,7 +1632,7 @@ function renderMedia(){
 
 /* ---------- 폼 연결 ---------- */
 const FIELDS = { f_title: 'title', f_sub: 'sub', f_info: 'info', f_cta: 'cta', f_thumb: 'thumb', f_quote: 'quote', f_quoteBy: 'quoteBy' };
-const BFIELDS = { b_name: 'name', b_sub: 'sub', b_tagline: 'tagline', b_contact: 'contact', b_handle: 'handle', b_tags: 'tags', b_primary: 'primary', b_accent: 'accent', b_light: 'light' };
+const BFIELDS = { b_name: 'name', b_sub: 'sub', b_tagline: 'tagline', b_contact: 'contact', b_handle: 'handle', b_tags: 'tags', b_primary: 'primary', b_accent: 'accent', b_pop: 'pop', b_light: 'light' };
 function saveAll(){
   store.set('promo.forms', state.forms); store.set('promo.styles', state.styles); store.set('promo.variants', state.variants); store.set('promo.brandKey', state.brandKey);
   const bs = {}; for (const k in state.brands) { const { types, range, label, collage, ...rest } = state.brands[k]; bs[k] = rest; } store.set('promo.brands', bs);
@@ -1604,6 +1646,7 @@ function fillForm(){
   for (const id in BFIELDS) $(id).value = b[BFIELDS[id]] || '';
   document.querySelectorAll('#brandTabs button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.brand === state.brandKey)));
   document.querySelectorAll('#themeBtns button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.style === STYLE())));
+  $('palBtns').innerHTML = PALETTES[state.brandKey].map((pl, i) => `<button type="button" data-pal="${i}" aria-pressed="${b.pal === i}"><span class="sw">${['primary', 'accent', 'pop', 'soft'].map(c => `<i style="background:${pl[c]}"></i>`).join('')}</span>${pl.name}</button>`).join('');
   $('variantBtn').textContent = `배치 바꾸기 (지금 ${'AB'[VAR() % 2]}안)`;
   document.documentElement.style.setProperty('--brand', b.primary);
   document.documentElement.style.setProperty('--brand-ink', onColor(b.primary));
@@ -1620,12 +1663,13 @@ function init(){
   $('themeBtns').innerHTML = THEMES.map(([k, n, d]) => `<button type="button" data-style="${k}"><canvas width="324" height="405" aria-hidden="true"></canvas><strong>${n}</strong><span>${d}</span></button>`).join('');
   $('brandTabs').addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return; state.brandKey = bt.dataset.brand; saveAll(); fillForm(); schedule(); });
   $('themeBtns').addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return; state.styles[state.brandKey] = bt.dataset.style; saveAll(); fillForm(); schedule(); });
+  $('palBtns').addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return; const i = +bt.dataset.pal; const pl = PALETTES[state.brandKey][i]; PAL_KEYS.forEach(c => B()[c] = pl[c]); B().pal = i; saveAll(); fillForm(); schedule(); });
   $('variantBtn').addEventListener('click', () => { state.variants[state.brandKey] = (VAR() + 1) % 2; saveAll(); fillForm(); schedule(); });
   $('f_type').addEventListener('change', e => { F().type = e.target.value; saveAll(); schedule(); });
   for (const id in FIELDS) $(id).addEventListener('input', e => { F()[FIELDS[id]] = e.target.value; saveAll(); schedule(); });
   ['f_p1', 'f_p2', 'f_p3'].forEach((id, i) => $(id).addEventListener('input', e => { (F().p ||= ['', '', ''])[i] = e.target.value; saveAll(); schedule(); }));
   $('f_ba').addEventListener('change', e => { F().ba = e.target.checked; saveAll(); schedule(); });
-  for (const id in BFIELDS) $(id).addEventListener('input', e => { B()[BFIELDS[id]] = e.target.value; saveAll(); if (id === 'b_primary' || id === 'b_accent') fillForm(); schedule(); });
+  for (const id in BFIELDS) $(id).addEventListener('input', e => { B()[BFIELDS[id]] = e.target.value; saveAll(); B().pal = -1; if (id === 'b_primary' || id === 'b_accent') fillForm(); schedule(); });
   $('brandReset').addEventListener('click', () => { const k = state.brandKey; state.brands[k] = structuredClone(DEFAULT_BRANDS[k]); delete state.logoImgs[k]; saveAll(); fillForm(); schedule(); toast('기본값으로 되돌렸어요'); });
   $('logoBtn').addEventListener('click', () => $('logoFile').click());
   $('logoFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { B().logo = r.result; saveAll(); loadLogo(state.brandKey).then(schedule); toast('로고를 넣었어요. 배경이 투명한 PNG가 가장 잘 어울려요.'); }; r.readAsDataURL(f); e.target.value = ''; });

@@ -1,5 +1,5 @@
 /* 홍보자료 제작기 — 오프라인용 서비스워커. 내용을 바꾸면 VERSION을 올리세요. */
-const VERSION = 'promo-v3';
+const VERSION = 'promo-v4';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
